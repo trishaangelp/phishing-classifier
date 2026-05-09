@@ -1,8 +1,43 @@
 # 🎣 Phishing URL Classifier
 
-A machine learning-powered web app that classifies URLs as **safe** or **phishing**. Paste any URL and get back a risk score, threat label, confidence level, and a breakdown of which features triggered the classification.
+A machine learning-powered web app that analyzes URLs and classifies them as **safe** or **phishing**. Paste any URL and get back a risk score, confidence level, threat indicators, and a full breakdown of the 14 features that drove the classification.
 
-**Stack:** Python · XGBoost · FastAPI · React · Docker
+🔗 **Live app:** https://phishing-classifier-tau.vercel.app/
+
+---
+
+## Motivation
+
+I built this project at the intersection of my four main areas: **data engineering, AI, full stack development, and cybersecurity.**
+
+The data engineering side covers the training pipeline — ingesting 450,000+ URLs, extracting 14 structural features from raw URL strings, and building a clean dataset the model can learn from. The AI side is the XGBoost classifier with SHAP explainability, turning URL patterns into interpretable predictions. The full stack side is the FastAPI backend and React frontend that make the model usable by anyone. And cybersecurity is the whole reason it exists.
+
+During my internship I worked on phishing-related tasks — analyzing suspicious links and understanding how threat actors craft URLs to deceive users — and that experience directly inspired this project. The Philippines has seen a dramatic rise in phishing incidents. According to the Cybercrime Investigation and Coordinating Center (CICC), cybercrime complaints tripled in 2024, with phishing and online fraud among the top categories. GCash, BDO, and Maya users lost nearly ₱198 million to cybercrime that year alone. Phishing via malicious URLs is now the fastest-growing digital threat in the country. Building something that could detect these links — even imperfectly — felt like a meaningful way to apply everything I was learning across all four areas at once.
+
+---
+
+## What It Does
+
+- Paste any URL into the input field
+- The app extracts 14 structural features from the URL (length, subdomains, suspicious TLDs, special characters, brand keywords, etc.)
+- An XGBoost model trained on 450,000+ labeled URLs predicts whether it's phishing or legitimate
+- Returns a **risk score (0–100)**, prediction label, confidence percentage, and human-readable threat indicators powered by SHAP explainability
+- Expandable feature breakdown table shows every signal the model used
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| ML Model | XGBoost | Gradient boosting classifier |
+| Explainability | SHAP | Explains which features drove each prediction |
+| Feature Extraction | Python + tldextract | Parses URL structure into 14 numeric features |
+| Backend | FastAPI | REST API with auto-generated docs at `/docs` |
+| Frontend | React + Vite | UI with dark terminal aesthetic |
+| Model Training | pandas + scikit-learn | Data pipeline and evaluation |
+| API Hosting | Render | Free tier Python web service |
+| Frontend Hosting | Vercel | Static site deployment |
 
 ---
 
@@ -12,27 +47,27 @@ A machine learning-powered web app that classifies URLs as **safe** or **phishin
 phishing-classifier/
 ├── README.md
 ├── .gitignore
-├── docker-compose.yml           # runs api + (optional) frontend together
 │
-├── model/                       # ML pipeline — run this first
+├── model/                       # ML pipeline
 │   ├── requirements.txt
-│   ├── features.py              # URL feature extractor (12 indicators)
+│   ├── features.py              # URL feature extractor (14 indicators)
 │   ├── train.py                 # loads dataset, trains XGBoost, saves model
-│   ├── evaluate.py              # prints metrics + confusion matrix
-│   └── phishing_model.pkl       # saved model (generated after training)
+│   └── evaluate.py              # confusion matrix + sample URL predictions
 │
 ├── api/                         # FastAPI backend
 │   ├── requirements.txt
-│   ├── main.py                  # app entry point, routes
+│   ├── .python-version          # pins Python 3.11 for deployment
+│   ├── main.py                  # app entry point, CORS, routes
 │   ├── classifier.py            # loads model, runs prediction + SHAP
 │   ├── schemas.py               # Pydantic request/response models
+│   ├── phishing_model.pkl       # trained XGBoost model
+│   ├── feature_columns.pkl      # feature column order from training
 │   └── Dockerfile
 │
 └── client/                      # React frontend
     ├── package.json
     ├── vite.config.js
     ├── index.html
-    ├── Dockerfile
     └── src/
         ├── main.jsx
         ├── App.jsx
@@ -47,278 +82,33 @@ phishing-classifier/
 
 ---
 
-## Prerequisites
+## How I Built It
 
-- [Python](https://python.org) 3.10 or higher — check with `python --version`
-- [Node.js](https://nodejs.org) v18 or higher — check with `node -v`
-- [Git](https://git-scm.com) — check with `git --version`
-- [Docker](https://docker.com) (optional, for containerized run)
+### 1. Feature Engineering
+The core of the classifier is `model/features.py` — a URL parser that extracts 14 structural signals from a raw URL string without ever visiting the page. Features include URL length, number of subdomains, presence of IP addresses, suspicious TLDs (`.xyz`, `.tk`, `.ml`), brand keywords in the domain, special characters, and more. These are the same signals a security analyst would look for when reviewing a suspicious link.
 
----
+### 2. Model Training
+I trained an XGBoost gradient boosting classifier on the **Mendeley URL Dataset** — 450,176 URLs sourced from PhishTank (real phishing submissions) and Majestic Million (verified legitimate domains). After cleaning and feature extraction the model achieved **95.3% accuracy** and a **0.97 ROC-AUC** on the held-out test set. SHAP (SHapley Additive exPlanations) is used at inference time to generate human-readable reasons for each prediction.
 
-## Dataset
+### 3. REST API
+The trained model is served via FastAPI. The `/classify` endpoint accepts a URL, runs it through the same feature extraction pipeline, loads the prediction from the model, and returns a structured JSON response with the risk score, label, confidence, SHAP-derived reasons, and raw feature values. FastAPI auto-generates interactive API documentation at `/docs`.
 
-This project uses the **PhiUSIIL Phishing URL Dataset** (235,795 URLs, 56 features).
-
-1. Download from: https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset
-2. Rename the file to `phishing.csv`
-3. Place it at `model/phishing.csv`
-
-The dataset has a `URL` column and a `label` column (1 = phishing, 0 = legitimate) plus 50 pre-computed features covering URL structure, page content, and domain properties. `train.py` uses all of them combined with our own URL-extracted features for maximum accuracy.
+### 4. Frontend
+The React frontend was built with a dark terminal aesthetic — IBM Plex Mono, green-on-black, scan line effect — intentionally designed to feel like a security tool rather than a generic web app. It features a command-line style URL input, an animated risk score circle that color-codes from green to red, a threat indicators list, and a collapsible feature breakdown table.
 
 ---
 
-## How to Build This Step by Step
-
-Each milestone has its own commit so your Git history shows real progress.
-
----
-
-### Step 1 — Create the repo on GitHub first
-
-1. Go to [github.com](https://github.com) → New repository
-2. Name it `phishing-classifier`
-3. Do NOT initialize with README or .gitignore
-4. Click Create repository
-
----
-
-### Step 2 — Set up local project + first commit
-
-Unzip the project files, open a terminal inside `phishing-classifier/`, then:
-
-Create `.gitignore` in the root:
-
-```
-__pycache__/
-*.pyc
-*.pkl
-*.egg-info/
-.env
-*/.env
-node_modules/
-*/node_modules/
-client/dist/
-.DS_Store
-*.log
-model/phishing.csv
-venv/
-.venv/
-```
-
-> Note: `*.pkl` is in .gitignore because model files can be large. `phishing.csv` is excluded because datasets shouldn't be committed — document where to get it in the README instead.
-
-Initialize and push:
-
-```bash
-git init
-git remote add origin https://github.com/YOUR_USERNAME/phishing-classifier.git
-git branch -M main
-git add README.md .gitignore docker-compose.yml
-git commit -m "init: project scaffold, README, and docker-compose"
-git push -u origin main
-```
-
----
-
-### Step 3 — Build the feature extractor
-
-This is the core of the ML pipeline. The feature extractor turns a raw URL string into a numerical vector the model can learn from.
-
-Files to add: `model/features.py` and `model/requirements.txt`
-
-Install dependencies:
-
-```bash
-cd model
-pip install -r requirements.txt
-```
-
-Test the extractor manually in Python:
-
-```python
-from features import extract_features
-print(extract_features("http://paypa1-secure.xyz/login"))
-```
-
-You should see a dictionary of 15+ numerical features.
-
-Commit:
-
-```bash
-cd ..
-git add model/features.py model/requirements.txt
-git commit -m "feat(model): URL feature extractor with 15 phishing indicators"
-git push
-```
-
----
-
-### Step 4 — Train the model
-
-Files to add: `model/train.py` and `model/evaluate.py`
-
-Make sure your dataset is at `model/phishing.csv`, then:
-
-```bash
-cd model
-python train.py
-```
-
-This will:
-- Load and clean the dataset
-- Extract features from all URLs
-- Train an XGBoost classifier
-- Save the model to `model/phishing_model.pkl`
-- Print accuracy, precision, recall, F1, and ROC-AUC
-
-Expected output: ~95–97% accuracy. Then run evaluation:
-
-```bash
-python evaluate.py
-```
-
-This prints a full confusion matrix and per-class metrics.
-
-Commit:
-
-```bash
-cd ..
-git add model/train.py model/evaluate.py
-git commit -m "feat(model): XGBoost training pipeline on PhiUSIIL dataset, ~97% accuracy"
-git push
-```
-
-> Do NOT commit `phishing_model.pkl`, `feature_columns.pkl`, or `phishing.csv` — they are gitignored. In a real deployment you'd store model files in S3 or a model registry.
-
----
-
-### Step 5 — Build the FastAPI backend
-
-Files to add: `api/main.py`, `api/classifier.py`, `api/schemas.py`, `api/requirements.txt`, `api/Dockerfile`
-
-Copy the trained model files into the api folder:
-
-```bash
-cp model/phishing_model.pkl api/phishing_model.pkl
-cp model/feature_columns.pkl api/feature_columns.pkl
-```
-
-Install and run:
-
-```bash
-cd api
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
-```
-
-Test it at `http://localhost:8000/docs` — FastAPI auto-generates interactive API docs. Try the `/classify` endpoint with a test URL.
-
-Commit:
-
-```bash
-cd ..
-git add api/main.py api/classifier.py api/schemas.py api/requirements.txt api/Dockerfile
-git commit -m "feat(api): FastAPI classify endpoint with SHAP feature explanations"
-git push
-```
-
----
-
-### Step 6 — Build the React frontend
-
-Files to add: everything in `client/`
-
-```bash
-cd client
-npm install
-```
-
-Create `client/.env`:
-
-```env
-VITE_API_URL=http://localhost:8000
-```
-
-Run it:
-
-```bash
-npm run dev
-```
-
-Open `http://localhost:5173` — you should see the classifier UI. Paste a URL and test it end to end.
-
-Commit:
-
-```bash
-cd ..
-git add client/
-git commit -m "feat(client): URL input, risk score card, feature breakdown UI"
-git push
-```
-
----
-
-### Step 7 — Docker + final test
-
-Make sure Docker is running, then from the project root:
-
-```bash
-docker-compose up --build
-```
-
-This starts both the API (port 8000) and frontend (port 5173) together. Test the full stack one more time.
-
-Commit:
-
-```bash
-git add api/Dockerfile client/Dockerfile docker-compose.yml
-git commit -m "chore: dockerize api and client, docker-compose for local dev"
-git push
-```
-
----
-
-### Step 8 — Deploy (optional but recommended)
-
-#### API → Render
-1. Push to GitHub (done)
-2. Go to Render → New Web Service → connect your repo
-3. Set root directory to `api`
-4. Build command: `pip install -r requirements.txt`
-5. Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-6. Deploy
-
-#### Frontend → Vercel
-1. Go to Vercel → New Project → import your repo
-2. Set root directory to `client`
-3. Set environment variable: `VITE_API_URL` = your Render API URL
-4. Deploy
-
-Once deployed, update `client/.env` to point to the live API and redeploy.
-
-Final commit:
-
-```bash
-git add .
-git commit -m "chore: final check, deployed to Render + Vercel"
-git push
-```
-
----
-
-## Daily Workflow
-
-```bash
-# terminal 1 — run api
-cd api && uvicorn main:app --reload --port 8000
-
-# terminal 2 — run frontend
-cd client && npm run dev
-
-# or run both with docker
-docker-compose up
-```
+## Model Performance
+
+| Metric | Score |
+|---|---|
+| Accuracy | 95.3% |
+| Precision | 97.2% |
+| Recall | 82.0% |
+| F1 Score | 88.9% |
+| ROC-AUC | 97.1% |
+
+Tested on 90,036 held-out samples from the Mendeley URL Dataset.
 
 ---
 
@@ -326,72 +116,64 @@ docker-compose up
 
 ### `POST /classify`
 
-Classifies a URL as phishing or legitimate.
-
 **Request:**
 ```json
-{ "url": "http://paypa1-secure.xyz/login" }
+{ "url": "http://gcash-reward-claim.xyz/verify" }
 ```
 
 **Response:**
 ```json
 {
-  "url": "http://paypa1-secure.xyz/login",
+  "url": "http://gcash-reward-claim.xyz/verify",
   "prediction": "phishing",
-  "confidence": 0.94,
-  "risk_score": 94,
   "is_phishing": true,
+  "confidence": 0.9998,
+  "risk_score": 100,
   "top_reasons": [
-    "Suspicious TLD (.xyz)",
-    "High brand similarity score to known domain",
-    "No HTTPS"
+    "Suspicious top-level domain (.xyz, .tk, .ml, etc.)",
+    "Multiple subdomains",
+    "Unusually long URL"
   ],
-  "features": {
-    "url_length": 34,
-    "num_dots": 2,
-    "has_https": false,
-    "suspicious_tld": true,
-    ...
-  }
+  "features": { ... }
 }
 ```
 
 ### `GET /health`
-Returns API status.
+Returns API status and whether the model is loaded.
 
 ### `GET /docs`
 Auto-generated interactive API documentation (FastAPI Swagger UI).
 
 ---
 
-## Key Concepts to Know
+## Limitations
 
-### Why XGBoost?
-XGBoost (Extreme Gradient Boosting) is a tree-based ensemble model. It's fast to train, handles tabular feature data extremely well, and gives you feature importance scores out of the box — which is why it's the go-to for structured ML tasks like this.
+- **Dataset is not Philippines-specific.** The model was trained on a global dataset (Mendeley URL Dataset sourced from PhishTank and Majestic Million). Philippine phishing campaigns often impersonate local brands like GCash, BDO, Maya, SSS, and PhilPost — and while the model catches many of these based on URL structure, there may be inaccuracies on PH-specific links that don't match global phishing patterns. A PH-specific dataset would significantly improve local accuracy.
+- **URL-only analysis.** The model only looks at the URL string — it does not visit the page, check certificates, or analyze page content. A sophisticated phishing site hosted on a legitimate-looking domain may slip through.
+- **Static model.** The model is trained once on a fixed dataset. It does not automatically learn new phishing patterns over time without retraining.
+- **Free tier cold starts.** The API is hosted on Render's free tier, which spins down after inactivity. The first request after idle time may take 30–60 seconds to respond.
 
-### What is SHAP?
-SHAP (SHapley Additive exPlanations) is a model explainability library. For each prediction, it tells you exactly which features pushed the score toward phishing and by how much. This is what powers the `top_reasons` in the API response — not just "it's phishing" but *why*.
+---
 
-### Why not just check a blocklist?
-Blocklists only catch known phishing URLs. ML catches *new* ones based on structural patterns — a URL that was registered 2 hours ago and mimics PayPal's domain will be caught by the model even if it's not in any blocklist yet.
+## Dataset
 
-### Limitations
-- The model is trained on a static dataset — it won't automatically learn new patterns without retraining
-- Very short or generic URLs (e.g. `bit.ly/abc123`) are hard to classify without resolving the redirect
-- Domain age via WHOIS can be slow — it's optional in this implementation
+**Mendeley URL Dataset** — 450,176 URLs  
+- 345,738 legitimate (sourced from Majestic Million)  
+- 104,438 phishing (sourced from PhishTank)  
+- Available at: https://data.mendeley.com/datasets/vfszbj9b36/1
 
 ---
 
 ## Features Roadmap
 
-- [x] URL feature extraction (15 indicators)
-- [x] XGBoost classifier with ~96% accuracy
+- [x] URL feature extraction (14 indicators)
+- [x] XGBoost classifier, 95.3% accuracy
 - [x] SHAP explainability
-- [x] FastAPI REST endpoint
+- [x] FastAPI REST endpoint with auto-docs
 - [x] React UI with risk score + breakdown
-- [x] Docker containerization
-- [ ] Bulk CSV upload — classify many URLs at once
+- [x] Deployed on Render + Vercel
+- [ ] Philippines-specific dataset
+- [ ] Bulk CSV upload
 - [ ] Browser extension
 - [ ] VirusTotal API cross-validation
-- [ ] Retraining pipeline with new phishing data
-- [ ] Historical results stored in PostgreSQL
+- [ ] Retraining pipeline
