@@ -1,0 +1,111 @@
+:root {
+  --bg: #0a0e0a;
+  --bg-card: #111711;
+  --bg-input: #0d120d;
+  --border: #1e2a1e;
+  --border-active: #2d4a2d;
+  --green: #4ade80;
+  --green-dim: #22c55e;
+  --green-muted: #166534;
+  --green-pale: #052e0a;
+  --red: #f87171;
+  --red-dim: #ef4444;
+  --red-muted: #7f1d1d;
+  --red-pale: #2a0a0a;
+  --amber: #fbbf24;
+  --text: #e2f0e2;
+  --text-muted: #6b8f6b;
+  --text-dim: #4a6a4a;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --radius: 6px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+.mono { font-family: var(--mono); }
+
+/* scan line effect on body */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 255, 0, 0.015) 2px,
+    rgba(0, 255, 0, 0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+}
+
+.btn-primary {
+  background: var(--green-muted);
+  color: var(--green);
+  border: 1px solid var(--green-dim);
+}
+.btn-primary:hover:not(:disabled) {
+  background: #1a4a1a;
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.15);
+}
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.tag-safe { background: var(--green-pale); color: var(--green); border: 1px solid var(--green-muted); }
+.tag-phishing { background: var(--red-pale); color: var(--red); border: 1px solid var(--red-muted); }
+.tag-neutral { background: #111; color: var(--text-muted); border: 1px solid var(--border); }
+
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-in { animation: fadeSlideUp 0.3s ease forwards; }
